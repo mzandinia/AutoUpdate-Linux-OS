@@ -1,0 +1,63 @@
+---
+- lineinfile:
+    line: "Time={{ timestamp }},
+           server_inventory_name={{ inventory_hostname }}, 
+           server_hostname=-,
+           status=unreachable,
+           cache_update_result=-,
+           update_result_all=-,
+           update_result_with_exclude=-,
+           reboot_requierd=-,
+           reboot_result=-"
+    path: "{{ path_log }}"
+    create: yes
+  delegate_to: controller
+  throttle: 1
+  ignore_errors: true
+  when: 
+    - facts['unreachable'] is defined
+    - facts['unreachable']
+
+- block:
+
+  - lineinfile:
+      line: "Time={{ timestamp }},
+             server_inventory_name={{ inventory_hostname }}, 
+             server_hostname={{ facts.ansible_facts.ansible_hostname }},
+             OS={{ facts['ansible_facts']['ansible_distribution'] }} {{ facts['ansible_facts']['ansible_distribution_major_version'] }}, 
+             status=reachable,
+             cache_update_result={{ yum_cache_update_result }},
+             update_result_all={{ redhat_update_result_all }},
+             update_result_with_exclude={{ redhat_update_result_with_exclude }},
+             reboot_requierd={{ redhat_reboot_requierd }},
+             reboot_result={{ reboot_result }}"
+      path: "{{ path_log }}"
+      create: yes
+    delegate_to: controller
+    throttle: 1
+    ignore_errors: true
+    when: ansible_os_family == "RedHat"
+
+  - lineinfile:
+      line: "Time={{ timestamp }},
+             server_inventory_name={{ inventory_hostname }}, 
+             server_hostname={{ facts.ansible_facts.ansible_hostname }},
+             OS={{ facts['ansible_facts']['ansible_distribution'] }} {{ facts['ansible_facts']['ansible_distribution_major_version'] }}, 
+             status=reachable,
+             cache_update_result={{ apt_cache_update_result }},
+             update_result_all={{ debian_update_result_all }},
+             update_result_with_exclude={{ debian_update_result_with_exclude }},
+             reboot_requierd={{ debian_reboot_requierd }},
+             reboot_result={{ reboot_result }}"
+      path: "{{ path_log }}"
+      create: yes
+    delegate_to: controller
+    throttle: 1
+    ignore_errors: true
+    when: ansible_os_family == "Debian"
+
+  when: 
+   - facts['unreachable'] is not defined
+   - facts['ansible_facts'] is defined
+    # and inventory_hostname != 'controller'
+...

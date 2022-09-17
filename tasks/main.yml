@@ -1,0 +1,25 @@
+---
+- include_tasks: gather_minimal_facts.yml
+- include_tasks: write_results_splunk.yml
+  when: 
+    - facts['unreachable'] is defined
+    - facts['unreachable']
+
+- name: playing main tasks
+  block: 
+
+    - include_tasks: cache_update.yml
+    - include_tasks: update_radhat_base_os.yml
+      when: facts['ansible_facts']['ansible_os_family'] == "RedHat"
+    - include_tasks: update_debian_base_os.yml
+      when: facts['ansible_facts']['ansible_os_family'] == "Debian"
+    - include_tasks: check_if_reboot_requierd.yml
+    - include_tasks: reboot_machine_if_requiered.yml
+    - include_tasks: write_results_splunk.yml
+
+  when: 
+    - facts['unreachable'] is not defined
+    - facts['ansible_facts'] is defined
+    - not facts['failed'] 
+    # - inventory_hostname != 'controller'
+...

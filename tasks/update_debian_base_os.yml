@@ -1,0 +1,42 @@
+---
+- name: Update Debian based OS
+  apt:
+    name: '*'
+    state: latest
+  throttle: "{{ throttling }}"
+  register: debian_update_result_all
+  retries: "{{ to_retry }}"
+  until: debian_update_result_all is success or ('Failed to lock apt for exclusive operation' not in debian_update_result_all.msg and '/var/lib/dpkg/lock' not in debian_update_result_all.msg)
+  ignore_errors: true
+  when:
+    - exclude == 0
+    - apt_cache_update_result is defined
+    - not apt_cache_update_result['failed']
+    
+
+- block:
+
+    - name: get a list of the packages that need update
+      ansible.builtin.shell: apt list --upgradable
+      register: list_upgradable
+      throttle: "{{ throttling }}"
+
+    - ansible.builtin.set_fact: 
+        upgradable_packages: "{{ list_upgradable.stdout | regex_findall('(^.+)\\/', multiline=True) }}"
+
+    - apt:
+        name: "{{ item }}"
+        state: latest
+      loop: "{{ upgradable_packages }}"
+      register: debian_update_result_with_exclude
+      throttle: "{{ throttling }}"
+      retries: "{{ to_retry }}"
+      until: debian_update_result_with_exclude is success or ('Failed to lock apt for exclusive operation' not in debian_update_result_with_exclude.msg and '/var/lib/dpkg/lock' not in debian_update_result_with_exclude.msg)
+      ignore_errors: true
+      when: item not in "{{ debian_exclude_packages }}"
+
+  when:
+    - exclude == 1
+    - apt_cache_update_result is defined
+    - not apt_cache_update_result['failed']
+...

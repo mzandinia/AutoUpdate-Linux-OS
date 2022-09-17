@@ -1,0 +1,11 @@
+---
+- name: Gathering minimal facts
+  setup:
+    gather_subset: '!all'
+  ignore_errors: true
+  ignore_unreachable: true
+  throttle: "{{ throttling }}"
+  register: facts
+  async: 300
+  poll: 60
+...

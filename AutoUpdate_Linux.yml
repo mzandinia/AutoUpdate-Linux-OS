@@ -1,0 +1,123 @@
+---
+- name: Update OS (ALL) and notify if reboot is needed
+  hosts:
+  - controller
+  - amazon-1
+  - splunk
+  - demo-unrechable
+  become: true
+  gather_facts: false
+  vars_files: vars/vars.yml
+  vars:
+    exclude: 0
+    reboot: 0
+  tasks:
+
+    - include_tasks: tasks/main.yml
+
+
+- name: Update OS (ALL) and reboot server if necessary
+  hosts:
+  - amazon-2
+  become: true
+  gather_facts: false
+  vars_files: vars/vars.yml
+  vars:
+    exclude: 0
+    reboot: 1
+  tasks:
+
+    - include_tasks: tasks/main.yml
+
+
+- name: Update OS (SOME) and notify if reboot is needed
+  hosts:
+  - debian
+  become: true
+  gather_facts: false
+  vars_files: vars/vars.yml
+  vars:
+    exclude: 1
+    reboot: 0
+  tasks:
+
+    - include_tasks: tasks/main.yml
+
+
+- name: Update OS (SOME) and reboot server if necessary
+  hosts:
+  - ubuntu
+  become: true
+  gather_facts: false
+  vars_files: vars/vars.yml
+  vars:
+    exclude: 1
+    reboot: 1
+    # reboot_timeout_seconds: 5
+  tasks:
+
+    - include_tasks: tasks/main.yml
+
+- name: Config splunk server to show the results
+  hosts:
+  - splunk
+  become: true
+  gather_facts: false
+  tasks:
+
+  - name: Copying update result to splunk server
+    ansible.builtin.copy:
+      src: "/home/admin/update_result.log"
+      dest: "/opt/update_result.log"
+
+  - name: Stopping Splunk service
+    ansible.builtin.systemd:
+      name: Splunkd
+      state: stopped    
+
+  - name: Creating necessary directory
+    ansible.builtin.file:
+      path: /opt/splunk/etc/apps/search/local/data/ui/views/
+      state: directory
+      owner: splunk
+      group: splunk
+
+  - name: Creating necessary directory
+    ansible.builtin.file:
+      path: /opt/splunk/etc/apps/search/local/data/ui/nav
+      state: directory
+      owner: splunk
+      group: splunk
+
+  - name: Copying dashboard
+    ansible.builtin.copy:
+      src: "/home/admin/AutoUpdate-Linux-OS/autoupdate_linux_os_splunk_dashboard.xml"
+      dest: "/opt/splunk/etc/apps/search/local/data/ui/views/"
+      owner: splunk
+      group: splunk
+
+  - name: Copying customized default navigation menu
+    ansible.builtin.copy:
+      src: "/home/admin/AutoUpdate-Linux-OS/default.xml"
+      dest: "/opt/splunk/etc/apps/search/local/data/ui/nav/default.xml"
+      owner: splunk
+      group: splunk
+
+  - name: Copying customized props.conf
+    ansible.builtin.copy:
+      src: "/home/admin/AutoUpdate-Linux-OS/props.conf"
+      dest: "/opt/splunk/etc/system/local/"
+      owner: splunk
+      group: splunk
+
+  - name: Copying customized inputs.conf
+    ansible.builtin.copy:
+      src: "/home/admin/AutoUpdate-Linux-OS/inputs.conf"
+      dest: "/opt/splunk/etc/system/local/"
+      owner: splunk
+      group: splunk
+
+  - name: Starting Splunk service
+    ansible.builtin.systemd:
+      name: Splunkd
+      state: started

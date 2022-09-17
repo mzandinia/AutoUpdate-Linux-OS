@@ -1,0 +1,27 @@
+---
+- name: Update all packages on RedHat based OS 
+  yum:
+    name: '*'
+    state: latest
+  throttle: "{{ throttling }}"
+  register: redhat_update_result_all
+  ignore_errors: true
+  when: 
+    - exclude == 0
+    - yum_cache_update_result is defined
+    - not yum_cache_update_result['failed']
+
+- name: Update some packages on RedHat based OS
+  yum:
+    name: '*'
+    state: latest
+    update_cache: no
+    exclude: "{{ redhat_exclude_packages }}"
+  throttle: "{{ throttling }}"
+  register: redhat_update_result_with_exclude
+  ignore_errors: true
+  when: 
+    - exclude == 1
+    - yum_cache_update_result is defined
+    - not yum_cache_update_result['failed']
+...

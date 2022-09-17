@@ -1,0 +1,22 @@
+---
+- name: yum cache update
+  shell: yum makecache # yum clean all && 
+  ignore_errors: true
+  register: yum_cache_update_result
+  throttle: "{{ throttling }}"
+  retries: "{{ to_retry }}"
+  delay: 10
+  until: yum_cache_update_result is not failed
+  when: facts['ansible_facts']['ansible_os_family'] == "RedHat"
+
+- name: apt cache update
+  apt:
+    update_cache: yes
+    autoclean: yes
+  register: apt_cache_update_result
+  retries: "{{ to_retry }}"
+  throttle: "{{ throttling }}"
+  until: apt_cache_update_result is success or ('Failed to lock apt for exclusive operation' not in apt_cache_update_result.msg and '/var/lib/dpkg/lock' not in apt_cache_update_result.msg)
+  ignore_errors: true
+  when: facts['ansible_facts']['ansible_os_family'] == "Debian"
+...

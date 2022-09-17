@@ -1,0 +1,16 @@
+---
+- reboot:
+    reboot_timeout: "{{ reboot_timeout_seconds }}"
+  register: reboot_result
+  throttle: 1
+  when: >
+    reboot == 1 and
+    (
+      ( redhat_reboot_requierd.stdout_lines is defined and 
+        redhat_reboot_requierd.stdout_lines[-1] == "1" )
+     or 
+      ( debian_reboot_requierd['stat']['exists'] is defined and 
+        debian_reboot_requierd['stat']['exists'] )
+    )
+  ignore_errors: true
+...

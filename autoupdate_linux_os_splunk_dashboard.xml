@@ -1,0 +1,149 @@
+<form version="1.1" theme="dark">
+  <label>AutoUpdate Linux OS result</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="text" token="server_hostname"> 
+      <label>Server hostname</label>
+      <default>*</default>
+      <prefix>*</prefix>
+      <suffix>*</suffix>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="server_inventory_name">
+      <label>Server inventory name</label>
+      <default>*</default>
+      <prefix>*</prefix>
+      <suffix>*</suffix>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="status">
+      <label>Status</label>
+      <choice value="*">ALL</choice>
+      <choice value="reachable">reachable</choice>
+      <choice value="unreachable">unreachable</choice>
+      <default>reachable</default>
+      <initialValue>reachable</initialValue>
+    </input>
+    <input type="dropdown" token="cache_update">
+      <label>Cache update result</label>
+      <choice value="*">ALL</choice>
+      <choice value="Success">Success</choice>
+      <choice value="Failed">Failed</choice>
+      <choice value="unreachable">unreachable</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="update_required">
+      <label>Update required?</label>
+      <choice value="*">ALL</choice>
+      <choice value="&quot;Cache update failed&quot;">Cache update failed</choice>
+      <choice value="Yes">Yes</choice>
+      <choice value="No">No</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="update_result">
+      <label>Update result</label>
+      <choice value="*">ALL</choice>
+      <choice value="&quot;Cache update failed&quot;">Cache update failed</choice>
+      <choice value="&quot;Update not required&quot;">Update not required</choice>
+      <choice value="Success">Success</choice>
+      <choice value="Failed">Failed</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="reboot_required">
+      <label>Reboot required?</label>
+      <choice value="*">ALL</choice>
+      <choice value="Yes">Yes</choice>
+      <choice value="No">No</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="reboot_result">
+      <label>Reboot result</label>
+      <choice value="*">ALL</choice>
+      <choice value="&quot;Admin must reboot the server manually&quot;">Admin must reboot the server manually</choice>
+      <choice value="Success">Success</choice>
+      <choice value="Failed">Failed</choice>
+      <choice value="&quot;no need to reboot&quot;">no need to reboot</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="time" token="time">
+      <label>Time</label>
+      <default>
+        <earliest>@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>index=main source="/opt/update_result.log"
+| rex field=_raw "cache_update_result=(?P&lt;cache_update_result&gt;.+?),\supdate_result_all="
+| rex field=_raw "update_result_all=(?P&lt;update_result_all&gt;.+?),\supdate_result_with_exclude="
+| rex field=_raw "update_result_with_exclude=(?P&lt;update_result_with_exclude&gt;.+?),\sreboot_requierd="
+| rex field=_raw "reboot_requierd=(?P&lt;reboot_required&gt;.+?),\sreboot_result="
+| rex field=_raw "reboot_result=(?P&lt;reboot_result&gt;.+?})"
+| rex field=cache_update_result "'failed':\s(?P&lt;cache_update_result_failed&gt;.+?[e])"
+| eval Cache_update = case(status="reachable" AND cache_update_result_failed="False", "Success",
+                           status="reachable" AND cache_update_result_failed="True", "Failed",
+                           status="unreachable", "unreachable")
+| rex field=update_result_all "changed...(?P&lt;update_result_all_changed&gt;.+?[e])"
+| rex field=update_result_all "failed...(?P&lt;update_result_all_failed&gt;.+?[e])"
+| rex field=update_result_all "skipped...(?P&lt;update_result_all_skipped&gt;.+?[e])"
+| rex field=update_result_with_exclude "changed...(?P&lt;update_result_exclude_changed&gt;.+?[e])"
+| rex field=update_result_with_exclude "failed...(?P&lt;update_result_exclude_failed&gt;.+?[e])"
+| eval flag = case(Cache_update="Success" AND isnull(update_result_all_skipped), 1,
+                   Cache_update="Success" AND isnotnull(update_result_all_skipped), 2)
+| eval update_required = case(status="unreachable", "unreachable",
+                              status="reachable" AND Cache_update="Failed", "Cache update failed",
+                              status="reachable" AND Cache_update="Success" AND flag=1 AND update_result_all_changed="True", "Yes",
+                              status="reachable" AND Cache_update="Success" AND flag=1 AND update_result_all_changed="False", "No",
+                              status="reachable" AND Cache_update="Success" AND flag=2 AND update_result_exclude_changed="True", "Yes",
+                              status="reachable" AND Cache_update="Success" AND flag=2 AND update_result_exclude_changed="False", "No")
+| eval update_result = case(status="unreachable", "unreachable",
+                              update_required="Cache update failed", "Cache update failed",
+                              update_required="No", "Update not required",
+                              update_required="Yes" AND flag=1 AND update_result_all_failed="False", "Success",
+                              update_required="Yes" AND flag=1 AND update_result_all_failed="True", "Failed",
+                              update_required="Yes" AND flag=2 AND update_result_exclude_failed="False", "Success",
+                              update_required="Yes" AND flag=2 AND update_result_exclude_failed="True", "Failed")
+| rex field=reboot_required "stat.+exists...(?P&lt;ubuntu_reboot_required&gt;.+?[e])"
+| rex field=reboot_required "stdout_lines.+\'(?P&lt;centos_reboot_required&gt;[01])\'"
+| eval Reboot_required = case(status="unreachable", "unreachable",
+                              ubuntu_reboot_required=="False" AND isnull(centos_reboot_required), "No",
+                              ubuntu_reboot_required=="True" AND isnull(centos_reboot_required), "Yes",
+                              centos_reboot_required==1 AND isnull(ubuntu_reboot_required), "Yes",
+                              centos_reboot_required==0 AND isnull(ubuntu_reboot_required), "No")
+| rex field=reboot_result "changed...(?P&lt;reboot_result_changed&gt;.+?[e])"
+| rex field=reboot_result "failed...(?P&lt;reboot_result_failed&gt;.+?[e])"
+| rex field=reboot_result "skipped...(?P&lt;reboot_result_skipped&gt;.+?[e])"
+| rex field=reboot_result "elapsed...(?P&lt;reboot_result_elapsed&gt;\d{1,3})"
+| eval Reboot_result = case(status="unreachable", "unreachable",
+                            Reboot_required=="Yes" AND reboot_result_skipped=="True", "Admin must reboot the server manually",
+                            Reboot_required=="Yes" AND reboot_result_changed=="True" AND reboot_result_failed=="False", "Success",
+                            Reboot_required=="Yes" AND reboot_result_failed=="True", "Failed",
+                            Reboot_required=="No", "no need to reboot")
+| eval Time = strftime(Time, "%Y-%m-%d %H:%M:%S")                            
+| search server_inventory_name=$server_inventory_name$ server_hostname=$server_hostname$ status=$status$ Cache_update=$cache_update$ update_required=$update_required$ update_result=$update_result$ Reboot_required=$reboot_required$ Reboot_result=$reboot_result$
+| rename server_inventory_name AS "Server inventory name" server_hostname AS "Server hostname" status AS Status Cache_update AS "Cache update result" update_required AS "Update required?" update_result AS "Update result" Reboot_required AS "Reboot required?" Reboot_result AS "Reboot result" reboot_result_elapsed AS "Reboot lapsed time"
+| table Time "Server hostname" "Server inventory name" OS Status "Cache update result" "Update required?" "Update result" "Reboot required?" "Reboot result" "Reboot lapsed time"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

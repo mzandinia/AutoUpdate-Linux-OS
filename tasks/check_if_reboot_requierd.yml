@@ -1,0 +1,14 @@
+---
+- name: checking if reboot is requiersd on RehHat based OS
+  shell: needs-restarting -r ; echo $?
+  register: redhat_reboot_requierd
+  ignore_errors: true
+  when: ansible_os_family == "RedHat" 
+
+- name: checking if reboot is requiersd on Debian based OS
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: debian_reboot_requierd
+  ignore_errors: true
+  when: ansible_os_family == "Debian" 
+...

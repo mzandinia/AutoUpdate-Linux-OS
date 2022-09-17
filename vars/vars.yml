@@ -1,0 +1,15 @@
+---
+path_log: "/home/admin/update_result.log"
+to_retry: 3
+throttling: 2
+reboot_timeout_seconds: 600
+timestamp: "{{ lookup('pipe', 'date +%s') }}"
+
+redhat_exclude_packages:
+  - kernel*
+  - gnupg*
+  - linux-firmware*
+  - tzdata
+
+debian_exclude_packages:
+  - tzdata
