@@ -19,7 +19,9 @@ Having the dashboard is also beneficial as you have a complete history of the up
 ## Getting Started
 
 There are four plays based on two things:
+
 1- how to update the OS
+
 2- how to reboot the server
 
 |              | Update | Reboot | Associated Variables |
