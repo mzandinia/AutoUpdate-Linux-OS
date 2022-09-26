@@ -26,10 +26,10 @@ There are four plays based on two things:
 
 |              | Update | Reboot | Associated Variables |
 |    :---:     |      :---:     |     :---:     |     :---     |
-| 1 | All OS and other packages | just check by Ansible | <ul><li>excluse = 0</li><li>reboot = 0</li></ul> |
-| 2 | All OS and other packages | automatically by Ansible | <ul><li>excluse = 0</li><li>reboot = 1</li></ul> |
-| 3 | Some packages exclude from update | just check by Ansible | <ul><li>excluse = 1</li><li>reboot = 0</li></ul> |
-| 4 | Some packages exclude from update | automatically by Ansible | <ul><li>excluse = 1</li><li>reboot = 1</li></ul> |
+| 1 | All OS and other packages | just check by Ansible | <ul><li>exclude = 0</li><li>reboot = 0</li></ul> |
+| 2 | All OS and other packages | automatically by Ansible | <ul><li>exclude = 0</li><li>reboot = 1</li></ul> |
+| 3 | Some packages exclude from update | just check by Ansible | <ul><li>exclude = 1</li><li>reboot = 0</li></ul> |
+| 4 | Some packages exclude from update | automatically by Ansible | <ul><li>exclude = 1</li><li>reboot = 1</li></ul> |
 
 ## Modules used:
 ##### 1-yum: 
