@@ -55,4 +55,4 @@ There are four plays based on two things:
 ## Notes:
 
 * If you have CentOS 7 in your environment make sure that ```yum-utils``` package is installed.
-* If you have servers with ```redhat_excluse = 1``` or ```debian_excluse = 1``` make sure there is at least one package in exclude section in the vars file
+* If you have servers with ```exclude = 1``` make sure there is at least one package in exclude section in the vars file
